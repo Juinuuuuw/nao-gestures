@@ -1,0 +1,27 @@
+# Python and local inference dependencies
+__pycache__/
+*.py[cod]
+.venv/
+runtime/
+
+# Local secrets and machine settings
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+robot_connection.json
+physical_robot_status.json
+webots/controllers/*/runtime.ini
+
+# Operator history, generated worlds, simulation captures and telemetry
+app/data/
+webots/results/
+webots/worlds/app_*.wbt
+webots/worlds/.app_*.wbproj
+*.log
+RESULTADOS.html
+
+# Earlier generated experiments; retain demo and edge_pt fixtures
+examples/emage_pt/
+examples/emage_pt_fixed/

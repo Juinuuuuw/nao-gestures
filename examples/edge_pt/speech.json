@@ -1,0 +1,181 @@
+{
+  "provider": "edge-tts",
+  "voice": "pt-BR-AntonioNeural",
+  "rate": "+0%",
+  "text": "Olá! Agora estou testando meus movimentos enquanto converso com você. Podemos começar com uma ideia pequena e depois expandir. Existem duas possibilidades: seguir por este caminho ou experimentar uma alternativa. O que você acha?",
+  "duration_s": 17.568,
+  "sample_rate": 16000,
+  "words": [
+    {
+      "text": "Olá",
+      "start_s": 0.1,
+      "duration_s": 0.475
+    },
+    {
+      "text": "Agora",
+      "start_s": 1.4375,
+      "duration_s": 0.4125
+    },
+    {
+      "text": "estou",
+      "start_s": 1.8625,
+      "duration_s": 0.25
+    },
+    {
+      "text": "testando",
+      "start_s": 2.125,
+      "duration_s": 0.4
+    },
+    {
+      "text": "meus",
+      "start_s": 2.5375,
+      "duration_s": 0.2
+    },
+    {
+      "text": "movimentos",
+      "start_s": 2.75,
+      "duration_s": 0.6
+    },
+    {
+      "text": "enquanto",
+      "start_s": 3.3625,
+      "duration_s": 0.45
+    },
+    {
+      "text": "converso",
+      "start_s": 3.825,
+      "duration_s": 0.5375
+    },
+    {
+      "text": "com",
+      "start_s": 4.375,
+      "duration_s": 0.1375
+    },
+    {
+      "text": "você",
+      "start_s": 4.525,
+      "duration_s": 0.425
+    },
+    {
+      "text": "Podemos",
+      "start_s": 5.8125,
+      "duration_s": 0.45
+    },
+    {
+      "text": "começar",
+      "start_s": 6.275,
+      "duration_s": 0.55
+    },
+    {
+      "text": "com",
+      "start_s": 6.8375,
+      "duration_s": 0.15
+    },
+    {
+      "text": "uma",
+      "start_s": 7.0,
+      "duration_s": 0.1
+    },
+    {
+      "text": "ideia",
+      "start_s": 7.1125,
+      "duration_s": 0.3125
+    },
+    {
+      "text": "pequena",
+      "start_s": 7.4375,
+      "duration_s": 0.4625
+    },
+    {
+      "text": "e",
+      "start_s": 7.9125,
+      "duration_s": 0.05
+    },
+    {
+      "text": "depois",
+      "start_s": 7.975,
+      "duration_s": 0.3875
+    },
+    {
+      "text": "expandir",
+      "start_s": 8.375,
+      "duration_s": 0.5875
+    },
+    {
+      "text": "Existem",
+      "start_s": 9.825,
+      "duration_s": 0.5375
+    },
+    {
+      "text": "duas",
+      "start_s": 10.375,
+      "duration_s": 0.3625
+    },
+    {
+      "text": "possibilidades",
+      "start_s": 10.75,
+      "duration_s": 0.9625
+    },
+    {
+      "text": "seguir",
+      "start_s": 11.9625,
+      "duration_s": 0.375
+    },
+    {
+      "text": "por",
+      "start_s": 12.35,
+      "duration_s": 0.1625
+    },
+    {
+      "text": "este",
+      "start_s": 12.525,
+      "duration_s": 0.2
+    },
+    {
+      "text": "caminho",
+      "start_s": 12.7375,
+      "duration_s": 0.425
+    },
+    {
+      "text": "ou",
+      "start_s": 13.175,
+      "duration_s": 0.1
+    },
+    {
+      "text": "experimentar",
+      "start_s": 13.2875,
+      "duration_s": 0.675
+    },
+    {
+      "text": "uma",
+      "start_s": 13.975,
+      "duration_s": 0.1
+    },
+    {
+      "text": "alternativa",
+      "start_s": 14.0875,
+      "duration_s": 0.7375
+    },
+    {
+      "text": "O",
+      "start_s": 15.6875,
+      "duration_s": 0.125
+    },
+    {
+      "text": "que",
+      "start_s": 15.825,
+      "duration_s": 0.15
+    },
+    {
+      "text": "você",
+      "start_s": 15.9875,
+      "duration_s": 0.2875
+    },
+    {
+      "text": "acha",
+      "start_s": 16.2875,
+      "duration_s": 0.4
+    }
+  ],
+  "note": "Online Microsoft speech service; this script sends the supplied text for synthesis."
+}

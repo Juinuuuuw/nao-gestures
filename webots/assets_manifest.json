@@ -1,0 +1,28 @@
+{
+  "source_assets": [
+    {
+      "source": "C:\\Users\\eduardo\\nao_v6_webots\\WebotsLoLaController\\protos\\NaoV6.proto",
+      "sha256": "b55e57cb091ab39407bc075b03486a1975fe9534c4f310d42f2ea611bc5e0580"
+    },
+    {
+      "source": "C:\\Users\\eduardo\\nao_v6_webots\\WebotsLoLaController\\protos\\NaoLeftWristH25Realistic.proto",
+      "sha256": "a3fafb6cc2186096451e422dddf4456d4bbb7b3519473b4c0b65518c32363984"
+    },
+    {
+      "source": "C:\\Users\\eduardo\\nao_v6_webots\\WebotsLoLaController\\protos\\NaoRightWristH25Realistic.proto",
+      "sha256": "e355dc2125294c15ddd61d0357aadbbea38b6d9df9a38453d6087a85afdcf551"
+    },
+    {
+      "source": "C:\\Users\\eduardo\\nao_v6_webots\\WebotsLoLaController\\protos\\textures\\chest_button.png",
+      "sha256": "06ea8ec6224c8952f91f6b61efe89a489bfe07e937ff4ff8250be00617556712"
+    },
+    {
+      "source": "C:\\Users\\eduardo\\nao_v6_webots\\WebotsLoLaController\\protos\\textures\\ear.jpg",
+      "sha256": "34c7e373fb4c02d141d7ef4d4972279f71f46efe1281be90f545fffd4dda8f2f"
+    }
+  ],
+  "modifications": [
+    "Explicit zero-inclusive simulator LElbowRoll range; physical elbow bounds enforced in controller."
+  ],
+  "license_note": "Model assets copied from the installed WebotsLoLaController project; upstream rights and attribution apply."
+}

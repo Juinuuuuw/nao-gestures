@@ -1,0 +1,12 @@
+{
+  "device": "cuda",
+  "audio_duration_s": 17.568,
+  "motion_frames": 527,
+  "motion_duration_s": 17.566666666666666,
+  "model_load_s": 0.6541232000454329,
+  "inference_s": 1.0793987999786623,
+  "peak_gpu_allocated_mib": 609.162109375,
+  "model": "EMAGE audio",
+  "weights_path": "C:\\Users\\eduardo\\Documents\\Codex\\2026-10-27\\seja-realista-tem-como-treinar-uma\\work\\weights\\emage",
+  "note": "Offline inference benchmark; no conversation, vision or robot connection."
+}

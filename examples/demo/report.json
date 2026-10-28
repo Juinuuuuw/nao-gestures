@@ -1,0 +1,17 @@
+{
+  "frames": 361,
+  "source_fps": 30.0,
+  "source_duration_s": 12.0,
+  "output_duration_s": 12.0,
+  "time_stretch": 1.0,
+  "max_sampled_velocity_rad_s": 0.2989472446240593,
+  "max_sampled_acceleration_rad_s2": 0.3249439192742676,
+  "mean_limb_direction_error_deg": 0.00023490233186627586,
+  "max_limb_direction_error_deg": 0.0006428819180074638,
+  "within_static_joint_limits": true,
+  "hardware_validated": false,
+  "collision_checked": false,
+  "balance_checked": false,
+  "audio_sync_valid": true,
+  "note": "Time stretch changes audio alignment. Replan or retime audio before synchronized playback. Sample bounds do not certify interpolated motor motion."
+}

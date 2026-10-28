@@ -1,0 +1,43 @@
+{
+  "source_job": "0d1250790ad94444aa0d607f3f461e8e",
+  "speech_duration_s": 7.966666666666667,
+  "old": {
+    "mean_speed_deg_s": 11.289367654830949,
+    "median_speed_deg_s": 6.841978502596666,
+    "peak_speed_deg_s": 41.2564870462346,
+    "audio_start_s": 2.43717975304748,
+    "duration_s": 12.403846419714146,
+    "velocity_bound_rad_s": 0.7294754076846247,
+    "acceleration_bound_rad_s2": 4.68588338619067
+  },
+  "profiles": {
+    "gentle": {
+      "mean_speed_deg_s": 11.520241565692226,
+      "median_speed_deg_s": 6.817541928352844,
+      "peak_speed_deg_s": 45.60744049241747,
+      "audio_start_s": 2.6734820563548283,
+      "duration_s": 12.680148723021496,
+      "velocity_bound_rad_s": 0.7960000000001441,
+      "acceleration_bound_rad_s2": 3.4825000000012563
+    },
+    "natural": {
+      "mean_speed_deg_s": 14.298537757712028,
+      "median_speed_deg_s": 8.288012955982843,
+      "peak_speed_deg_s": 59.859765646293816,
+      "audio_start_s": 1.9063243159496486,
+      "duration_s": 11.009146643213922,
+      "velocity_bound_rad_s": 1.0447500000000336,
+      "acceleration_bound_rad_s2": 4.477500000005806
+    },
+    "brisk": {
+      "mean_speed_deg_s": 15.873844369535218,
+      "median_speed_deg_s": 8.994237359495557,
+      "peak_speed_deg_s": 68.41116073862632,
+      "audio_start_s": 1.7025145796870804,
+      "duration_s": 10.69593674108848,
+      "velocity_bound_rad_s": 1.1940000000002162,
+      "acceleration_bound_rad_s2": 4.975000000010077
+    }
+  },
+  "hardware_validated": false
+}

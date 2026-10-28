@@ -1,0 +1,4 @@
+Olá! Podemos começar com uma ideia pequena e depois expandir. Existem duas possibilidades. Podemos seguir por este caminho ou experimentar uma alternativa. O que você acha?
+
+Voz usada no teste: Microsoft Maria Desktop, pt-BR, via System.Speech do Windows.
+O uso desta voz é apenas um insumo local para testar o gerador corporal.
