@@ -191,6 +191,9 @@ def main():
     except ImportError:from stiffness_scope import ConstantStiffness
     try:from app.joint_activation import JointActivation
     except ImportError:from joint_activation import JointActivation
+    try:from app.eye_expression import EyeExpression,EyeResources
+    except ImportError:from eye_expression import EyeExpression,EyeResources
+    eyes=None;eye_resources=None
     manual_activation=JointActivation(motion,manual_names,status['manual']['stiffness'],status['manual']['angles']) if includes_manual else None
     manual_entered=False
     stiffness_scope=ConstantStiffness(motion,enabled=a.constant_stiffness);stiffness_entered=False;terminal=None;head_settings={};head_stiffness_changed=False
@@ -217,6 +220,12 @@ def main():
         for ability in active_abilities:
             abilities[ability]=life.getAutonomousAbilityEnabled(ability)
             life.setAutonomousAbilityEnabled(ability,False)
+        if plan.get('eye_color') is not None:
+            try:
+                abilities['AutonomousBlinking']=life.getAutonomousAbilityEnabled('AutonomousBlinking')
+                life.setAutonomousAbilityEnabled('AutonomousBlinking',False)
+                emit('eye_control',autonomous_blinking_suspended=True)
+            except Exception as error:emit('eye_expression',active=False,message='Nao foi possivel suspender a piscada autonoma: '+str(error))
         if includes_head:
             for getter,setter in (('getBreathEnabled','setBreathEnabled'),('getIdlePostureEnabled','setIdlePostureEnabled')):
                 head_settings[setter]=getattr(motion,getter)('Head')
@@ -230,6 +239,13 @@ def main():
                 motion.stiffnessInterpolation(head_names,[max(.7,x) for x in status['head']['stiffness']],.4)
         if manual_activation is not None:
             manual_activation.__enter__();manual_entered=True
+        if plan.get('eye_color') is not None:
+            try:
+                eye_resources=EyeResources(session,session.service('ALResourceManager'));eye_resources.acquire()
+                eyes=EyeExpression(session.service('ALLeds'),plan['eye_color']);eyes.prepare()
+            except Exception as error:
+                if eye_resources is not None:eye_resources.release()
+                eyes=None;emit('eye_expression',active=False,message=str(error))
         time.sleep(.15)
         if not motion.areResourcesAvailable(names):raise RuntimeError('Os bracos estao ocupados por outro comportamento.')
         if stopped():terminal=('stopped',{});return
@@ -254,7 +270,15 @@ def main():
                 terminal=('stopped',{});return
             if not plan.get('diagnostic') and not audio_announced and time.time()>=audio_at:
                 emit('audio_start');audio_announced=True
+                if eyes is not None:
+                    try:
+                        eyes.start()
+                        emit('eye_expression',active=True)
+                    except Exception as error:emit('eye_expression',active=False,message=str(error))
             elapsed=time.time()-start
+            if eyes is not None and audio_announced:
+                try:eyes.maintain()
+                except Exception as error:emit('eye_expression',active=False,message='Falha ao manter a cor dos olhos: '+str(error))
             if telemetry is not None and elapsed>=next_sample and not telemetry_failed:
                 next_sample=elapsed+.1
                 try:
@@ -274,7 +298,7 @@ def main():
         task.value()
         if audio_thread:audio_thread.join(2.)
         if audio_error:raise RuntimeError(audio_error[0])
-        terminal=('complete',dict(physical_motion_tested=True,motor_tracking_rms_deg=math.degrees(math.sqrt(sum(motor_tracking)/len(motor_tracking))) if motor_tracking else None,tracking_rms_deg=math.degrees(math.sqrt(sum(tracking)/len(tracking))) if tracking else None,hand_tracking_rms_fraction=math.sqrt(sum(hand_tracking)/len(hand_tracking)) if hand_tracking else None,telemetry_failed=telemetry_failed))
+        terminal=('complete',dict(physical_motion_tested=True,eye_refresh_count=eyes.refresh_count if eyes is not None else 0,motor_tracking_rms_deg=math.degrees(math.sqrt(sum(motor_tracking)/len(motor_tracking))) if motor_tracking else None,tracking_rms_deg=math.degrees(math.sqrt(sum(tracking)/len(tracking))) if tracking else None,hand_tracking_rms_fraction=math.sqrt(sum(hand_tracking)/len(hand_tracking)) if hand_tracking else None,telemetry_failed=telemetry_failed))
     finally:
         stop.set()
         try:
@@ -287,6 +311,12 @@ def main():
                 if stiffness_entered:stiffness_scope.__exit__(*sys.exc_info())
             finally:
                 restore_errors=[]
+                if eyes is not None:
+                    try:eyes.restore()
+                    except Exception as error:restore_errors.append('eye LEDs: '+str(error))
+                if eye_resources is not None:
+                    try:eye_resources.release()
+                    except Exception as error:restore_errors.append('eye resources: '+str(error))
                 if manual_entered:
                     try:manual_activation.__exit__(*sys.exc_info())
                     except Exception as error:restore_errors.append('wrist/hand stiffness: '+str(error))

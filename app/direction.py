@@ -19,6 +19,7 @@ def normal(text):
     return ''.join(c for c in unicodedata.normalize('NFD',text.lower()) if unicodedata.category(c)!='Mn')
 
 def plan_intents(speech,duration=None):
+    timing_source='elevenlabs_word' if speech.get('provider')=='elevenlabs' else 'edge_word'
     duration=float(speech.get('duration_s',0.) if duration is None else duration)
     if not math.isfinite(duration) or duration<=0 or duration>65:raise ValueError('Duração da fala inválida.')
     words=[]
@@ -48,11 +49,11 @@ def plan_intents(speech,duration=None):
         elif token in ('grande','maior','expandir','ampliar','expandindo'):kind='expand';side='both';priority=3
         elif token in ('pequeno','pequena','menor'):kind='small';side='both';priority=3
         if kind:
-            candidates.append(dict(kind=kind,side=side,priority=priority,word=word['word'],at_s=word['at'],timing_source='edge_word'))
+            candidates.append(dict(kind=kind,side=side,priority=priority,word=word['word'],at_s=word['at'],timing_source=timing_source))
             explanation_side+=1
     if '?' in speech.get('text',''):
         # Use the last spoken word; no fixed timestamp detached from the audio.
-        word=words[-1];candidates.append(dict(kind='question',side='both',priority=2,word=word['word'],at_s=word['at'],timing_source='edge_word'))
+        word=words[-1];candidates.append(dict(kind='question',side='both',priority=2,word=word['word'],at_s=word['at'],timing_source=timing_source))
     # Prioritise explicit intent; avoid packing several gestures into one clause.
     selected=[]
     for candidate in sorted(candidates,key=lambda e:(-e['priority'],e['at_s'])):
@@ -60,7 +61,7 @@ def plan_intents(speech,duration=None):
         if len(selected)>=min(16,max(1,int(math.ceil(duration/2.4)))):break
     if not selected:
         word=words[len(words)//2]
-        selected=[dict(kind='explain',side='L',priority=0,word=word['word'],at_s=word['at'],timing_source='edge_word',fallback=True)]
+        selected=[dict(kind='explain',side='L',priority=0,word=word['word'],at_s=word['at'],timing_source=timing_source,fallback=True)]
     selected.sort(key=lambda e:e['at_s'])
     for event in selected:event['label']=LABELS[event['kind']]
     return {'version':1,'method':'Portuguese intent vocabulary + timed words','events':selected,

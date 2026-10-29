@@ -74,11 +74,19 @@ def main():
     end=start+times[-1];finish=end+exit_duration+1.
     rows=[];played=False;audio_start=None;capture_count=0;capture_dir=out/'frames';movie_started=False;movie_stopped=False;active_wall_start=None;drifts=[]
     if args.capture:capture_dir.mkdir(exist_ok=True)
+    eyes=[];eye_original=[];eye_active=False
+    if data.get('eye_color') is not None:
+        eyes=[robot.getDevice('Face/Led/Left'),robot.getDevice('Face/Led/Right')]
+        eye_original=[eye.get() for eye in eyes]
     clock0=robot.getTime();wall0=time.perf_counter()
     def blend(a,b,f):
         f=min(1.,max(0.,f));s=f*f*f*(10-15*f+6*f*f);return a*(1-s)+b*s
     while robot.step(step)!=-1:
         t=robot.getTime()-clock0
+        should_express=start<=t<end
+        if eyes and should_express!=eye_active:
+            for eye,original in zip(eyes,eye_original):eye.set(int(data['eye_color']) if should_express else original)
+            eye_active=should_express
         lean=0.
         if t<prepare:phase='Preparando postura';target=blend(initial,rest,t/prepare)
         elif t<start:
@@ -137,6 +145,7 @@ def main():
     summary['hand_measured_range_fraction']=np.ptp(actuals[:,hand_indices],axis=0).tolist() if has_hands else []
     summary['hand_tracking_rms_fraction']=float(np.sqrt(np.mean(errors[:,hand_indices]**2))) if has_hands else None
     summary['intent_events']=data.get('intent_events',[])
+    summary['emotion']=data.get('emotion','neutral');summary['eye_color']=data.get('eye_color')
     summary['torso_simulated']=bool('simulated_torso_pitch_rad' in data)
     summary['torso_hip_offset_max_deg']=float(np.degrees(np.abs(torso).max()))
     summary['created_at_utc']=datetime.now(timezone.utc).isoformat()

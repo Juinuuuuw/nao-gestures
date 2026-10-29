@@ -19,7 +19,9 @@ def speech_preview(plan,torso=None,torso_fps=30.):
           'angles_rad':sample_plan(plan,times+plan['audio_start_s']).tolist(),
           'interpolation':'uniform_cubic_control_points','intent_events':plan.get('intent_events',[]),
           'source':'Sampled physical speech plan; Webots cubic playback adds slight smoothing',
-          'pace':plan['pace'],'hand_enabled':plan.get('hand_enabled',False)}
+          'pace':plan['pace'],'hand_enabled':plan.get('hand_enabled',False),
+          'emotion':plan.get('emotion','neutral'),'eye_color':plan.get('eye_color'),
+          'body_style':plan.get('body_style'),'emotion_cues':plan.get('emotion_cues',[])}
     if torso is not None:
         data['simulated_torso_pitch_rad']=UniformCubic(np.asarray(torso)[:,None],torso_fps)(times)[:,0].tolist()
     return data

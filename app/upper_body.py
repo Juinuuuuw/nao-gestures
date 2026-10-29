@@ -30,11 +30,13 @@ def load_upper_body(directory):
     return {'fps':fps,'head_rad':np.column_stack([yaw,pitch]),'torso_pitch_rad':torso,
             'source':'EMAGE neck+head relative to upper spine; spine pitch for simulation only'}
 
-def head_coefficients(head,fps,current):
+def head_coefficients(head,fps,current,pitch_bias=0.,yaw_bias=0.):
     head=np.asarray(head,float);current=np.asarray(current,float)
     if head.ndim!=2 or head.shape[1]!=2 or len(head)<3 or current.shape!=(2,) or not np.isfinite(head).all() or not np.isfinite(current).all():
         raise ValueError('Trajetória da cabeça inválida.')
     center=np.clip(current,[-.18,-.08],[.18,.08])
+    center[1]+=float(pitch_bias)
+    center[0]+=float(yaw_bias)
     targets=np.clip(center+(head-head.mean(axis=0))*.7,HEAD_GESTURE_LIMITS[:,0]+.01,HEAD_GESTURE_LIMITS[:,1]-.01)
     return smooth_fixed_time(targets,fps,max_velocity=.45,max_acceleration=1.5,
                              velocity_weight=.004,acceleration_weight=.0003,joint_limits=HEAD_GESTURE_LIMITS)

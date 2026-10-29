@@ -58,7 +58,7 @@ class FakeTelemetry:
 
 class WorkerCleanupTests(unittest.TestCase):
     def fixture(self, close_error=False, write_error=False, restore_error=False,
-                stop_during_motion=False,with_head=False,with_manual=False):
+                stop_during_motion=False,with_head=False,with_manual=False,with_eye=False,eye_restore_error=False,blinking_enabled=True):
         events = []
         future = FakeFuture(events, complete=not (write_error or stop_during_motion))
         telemetry = FakeTelemetry(events, close_error, write_error)
@@ -94,6 +94,7 @@ class WorkerCleanupTests(unittest.TestCase):
         abilities = {'BackgroundMovement': True, 'SpeakingMovement': False,
                      'ListeningMovement': True}
         if with_head:abilities['BasicAwareness']=True
+        if with_eye:abilities['AutonomousBlinking']=blinking_enabled
         life = Mock()
         life.getState.return_value = 'solitary'
         life.getAutonomousAbilityEnabled.side_effect = lambda name: abilities[name]
@@ -104,8 +105,21 @@ class WorkerCleanupTests(unittest.TestCase):
                     'ALSystem': types.SimpleNamespace(systemVersion=lambda: '2.8.7.7'),
                     'ALRobotPosture': types.SimpleNamespace(getPosture=lambda: 'Stand'),
                     'ALBattery': types.SimpleNamespace(getBatteryCharge=lambda: 60)}
+        if with_eye:
+            manager=Mock();manager.acquireResourcesTree.side_effect=lambda *args:events.append(('eyes_acquired',))
+            manager.releaseResources.side_effect=lambda *args:events.append(('eyes_released',))
+            services['ALResourceManager']=manager
+            leds=Mock();leds.listGroup.return_value=['Face/Led/Red/Left/0Deg/Actuator/Value','Face/Led/Blue/Right/0Deg/Actuator/Value']
+            leds.getIntensity.side_effect=[.2,.7]
+            leds.fadeRGB.side_effect=lambda *args:events.append(('eye_color',))
+            def restore_eye(name,value):
+                events.append(('eye_restore',value))
+                if eye_restore_error:raise RuntimeError('eye restore failed')
+            leds.setIntensity.side_effect=restore_eye;services['ALLeds']=leds
 
         class Session:
+            def registerService(self,name,service):return 42
+            def unregisterService(self,identifier):events.append(('eye_owner_unregistered',))
             def connect(self, address):
                 events.append(('fake_connect', address))
 
@@ -124,6 +138,7 @@ class WorkerCleanupTests(unittest.TestCase):
             direction={'method':'fixture','events':[{'kind':'greeting','side':'L','at_s':.8}]} if with_manual else None
             plan=build_plan(source,REST,head_targets=targets if with_head else None,current_head=[0.,0.] if with_head else None,direction=direction,current_manual=[0.,0.,.02,.02] if with_manual else None)
             plan['initial_angles']=REST.tolist()+([0.,0.] if with_head else [])+([0.,0.,.02,.02] if with_manual else [])
+        if with_eye:plan['eye_color']=0xFFD060;plan['audio_start_s']=0.
 
         def open_file(path, *args, **kwargs):
             if path == 'fixture-plan.json':
@@ -171,6 +186,36 @@ class WorkerCleanupTests(unittest.TestCase):
         self.assertLess(events.index(('manual_stiffness',(0.,)*4)),events.index(('event','complete')))
         motion.setAngles.assert_any_call(MANUAL_NAMES,[0.,0.,.02,.02],.02)
         self.assert_restored(events,abilities)
+
+    def test_eye_color_restored_before_complete(self):
+        run,events,motion,abilities=self.fixture(with_head=True,with_eye=True)
+        run()
+        self.assertIn(('eye_color',),events)
+        self.assertLess(events.index(('eye_restore',.2)),events.index(('event','complete')))
+        self.assertIn(('eye_restore',.7),events)
+        self.assertIn(('ability','AutonomousBlinking',False),events)
+        self.assertLess(events.index(('ability','AutonomousBlinking',False)),events.index(('eye_color',)))
+        self.assertLess(events.index(('eye_restore',.7)),events.index(('ability','AutonomousBlinking',True)))
+        self.assertLess(events.index(('eyes_released',)),events.index(('event','complete')))
+        self.assert_restored(events,abilities)
+
+    def test_eye_snapshot_restored_on_stop(self):
+        run,events,motion,abilities=self.fixture(with_head=True,with_eye=True,stop_during_motion=True)
+        run()
+        self.assertLess(events.index(('eye_restore',.2)),events.index(('event','stopped')))
+        self.assert_restored(events,abilities)
+
+    def test_blinking_already_disabled_is_not_enabled_by_cleanup(self):
+        run,events,motion,abilities=self.fixture(with_head=True,with_eye=True,blinking_enabled=False)
+        run();self.assert_restored(events,abilities)
+        self.assertNotIn(('ability','AutonomousBlinking',True),events)
+
+    def test_eye_restore_failure_still_restores_head_and_abilities(self):
+        run,events,motion,abilities=self.fixture(with_head=True,with_eye=True,eye_restore_error=True)
+        with self.assertRaisesRegex(RuntimeError,'eye restore failed'):run()
+        self.assertIn(('head_stiffness',(0.,0.)),events)
+        self.assertIn(('eye_restore',.7),events)
+        self.assert_restored(events,abilities);self.assert_no_complete(events)
 
     def test_manual_stop_restores_before_stopped(self):
         run,events,motion,abilities=self.fixture(with_head=True,with_manual=True,stop_during_motion=True)

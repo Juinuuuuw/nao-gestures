@@ -43,7 +43,9 @@ def bezier_bounds(plan):
     return {'velocity_bound_rad_s':velocity,'acceleration_bound_rad_s2':acceleration,
             'hand_velocity_bound_fraction_s':hand_velocity,'hand_acceleration_bound_fraction_s2':hand_acceleration}
 
-def build_plan(trajectory,current,intensity=1.,pace='natural',head_targets=None,current_head=None,direction=None,current_manual=None):
+def build_plan(trajectory,current,intensity=1.,pace='natural',head_targets=None,current_head=None,direction=None,current_manual=None,emotion='neutral',emotion_cues=None):
+    from app.emotion import profile,apply_emotion,BODY_STYLES
+    expression=profile(emotion)
     from nao_gestures.retarget import smooth_fixed_time
     if pace not in PACES:raise ValueError('Ritmo desconhecido.')
     cfg=PACES[pace]
@@ -70,6 +72,8 @@ def build_plan(trajectory,current,intensity=1.,pace='natural',head_targets=None,
     if direction is not None:
         from app.direction import direct_motion
         targets,head_targets,manual=direct_motion(targets,head_targets,t,direction)
+    cue_times=[cue['at_s'] for cue in (emotion_cues or [])]
+    targets,head_targets,manual=apply_emotion(targets,head_targets,manual,t,emotion,cue_times=cue_times)
     # Enforce physical limits AFTER amplitude adaptation; do not attenuate the
     # source velocity limit by the amplitude again. Keep the speech clock fixed.
     coefficients=smooth_fixed_time(targets,fps,max_velocity=cfg['velocity'],max_acceleration=cfg['acceleration'],
@@ -82,7 +86,7 @@ def build_plan(trajectory,current,intensity=1.,pace='natural',head_targets=None,
         if current_head.shape!=(2,) or not np.isfinite(current_head).all() or np.any(current_head<HEAD_LIMITS[:,0]) or np.any(current_head>HEAD_LIMITS[:,1]):
             raise ValueError('Posição inicial da cabeça inválida.')
         if np.shape(head_targets)!=(len(t),2):raise ValueError('Relógio da cabeça incompatível.')
-        heads=head_coefficients(head_targets,fps,current_head)
+        heads=head_coefficients(head_targets,fps,current_head,pitch_bias=expression['pitch_bias'],yaw_bias=BODY_STYLES[emotion]['yaw_bias'])
         coefficients=np.column_stack([coefficients,heads]);current=np.r_[current,current_head]
         names+=HEAD_NAMES;limits=np.vstack([LIMITS,HEAD_LIMITS])
         transition_velocity=np.r_[transition_velocity,[.35,.35]]
@@ -132,7 +136,9 @@ def build_plan(trajectory,current,intensity=1.,pace='natural',head_targets=None,
     plan={'names':names,'times':[times.tolist() for _ in names],'control_points':controls,
           'audio_start_s':float(.04+entry),'speech_duration_s':float(t[-1]),'entry_duration_s':entry,'exit_duration_s':exit_time,
           'duration_s':float(times[-1]),'intensity':float(intensity),'effective_intensity':gain,'pace':pace,
-          'raw_targets_available':'source_joint_targets_rad' in trajectory,'planner_version':7,
+          'raw_targets_available':'source_joint_targets_rad' in trajectory,'planner_version':9,
+          'body_style':BODY_STYLES[emotion]['label'],'emotion_cues':emotion_cues or [],
+          'emotion':emotion,'emotion_label':expression['label'],'eye_color':expression['color'],
           'manual_method':'arm posture and motion energy + intent accents' if manual is not None else None,
           'joint_units':['open_fraction' if name in ('LHand','RHand') else 'radians' for name in names],
           'gesture_range_deg':[None if name in ('LHand','RHand') else float(np.degrees(np.ptp(speech_values[:,j]))) for j,name in enumerate(names)],

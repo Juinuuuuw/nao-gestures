@@ -14,13 +14,17 @@ Para verificar o código: `runtime/gesture-env/Scripts/python.exe -m unittest di
 
 Execute `powershell -ExecutionPolicy Bypass -File .\ABRIR_STUDIO.ps1` nesta pasta e abra **http://127.0.0.1:8766**. Mantenha o processo aberto enquanto usar a tela.
 
-1. Escreva o texto e escolha Antonio ou Francisca.
-2. Clique em **Gerar fala e gestos** e aguarde. A voz usa o serviço Edge TTS online; EMAGE e adaptação rodam localmente. Gerações são salvas separadamente em `app/data/jobs/`.
+1. Escreva o texto, escolha Edge TTS (Antonio/Francisca) ou ElevenLabs e selecione a emoção: Alegria, Tristeza, Medo, Raiva, Nojo ou Surpresa. Neutra preserva o comportamento anterior.
+2. Clique em **Gerar fala e gestos** e aguarde. A voz usa o serviço online escolhido; EMAGE e adaptação rodam localmente. Gerações são salvas separadamente em `app/data/jobs/`.
 3. Ouça a fala e visualize os braços. **Testar no Webots** executa uma simulação e disponibiliza o vídeo na aba Webots.
 4. **Executar no NAO** verifica o robô em `192.168.17.62:9561` e executa os oito motores dos braços e, no modo **Braços + cabeça**, os dois motores HeadYaw/HeadPitch. O robô deve estar em Stand/StandInit, com rigidez já ativada e bateria de pelo menos 20%. O app não levanta o robô nem envia movimentos físicos às pernas.
 5. **Parar execução** solicita cancelamento dos movimentos dos braços e do áudio desta execução. Se a rede cair, uma parada remota não é garantida; o controle físico do robô continua sendo necessário.
 
 As trajetórias físicas usam amplitude padrão de 100% da adaptação IK (com opções de 80%, 60% e 35%), com os gestos centralizados numa postura de braços à frente. A posição medida é usada na entrada e no retorno. A fala espera a confirmação de agendamento do movimento no ALMotion. Movimentos autônomos de fundo/escuta/fala são suspensos durante a execução e restaurados ao terminar.
+
+**ElevenLabs em português:** selecione o serviço ElevenLabs, cadastre a API key no painel local e carregue as vozes da conta. Também é possível informar um Voice ID; o inicial é `NOpBlnGInO9m6vDvFkFC`. Modelos v4, v3, Multilingual v2 e Flash v2.5 disponíveis no seletor. O padrão v4 solicita `language_code="pt"`; escolha uma voz brasileira para pt-BR. A chave é protegida por DPAPI no Windows e fica fora do Git. A síntese usa tempos por caractere para manter a sincronização. Consulte `app/VOZES.md`. Não foi feita síntese real ElevenLabs sem uma chave válida.
+
+**Emoções:** cada geração salva a emoção escolhida. Ela ajusta velocidade, altura e volume da voz, além da amplitude, postura da cabeça, abertura das mãos e cor dos olhos sobre a base EMAGE. O painel mostra **Roteiro emocional**, com **[Emoção Selecionada]**, **[Fala e Gestos]** e referências nos tempos reais das palavras. As descrições de gestos não são enviadas ao TTS. Trocar a emoção exige gerar novamente. São perfis expressivos aproximados, sem reescrita automática do conteúdo por uma LLM; não há garantia de reconhecimento perceptivo da emoção. No NAO, a expressão usa cabeça, braços, mãos e LEDs, sem movimentos de boca, sobrancelhas ou passos. Detalhes em `app/EMOCOES.md`.
 
 **Gestos com intenção e mãos:** selecione **EMAGE + intenção + mãos naturais**. O texto e os tempos de palavras do Edge TTS são usados para selecionar saudações, explicação, alternativas, ênfases, perguntas e tamanho; expressões literais como “abrir a mão”/“fechar a mão” também são reconhecidas. Abra **Gestos previstos** para revisar as referências na fala. É uma primeira camada de regras em português, não compreensão livre por uma LLM. Frases sem uma intenção conhecida recebem um gesto explicativo discreto. “EMAGE sem direção” mantém a trajetória sem esta camada e não inclui mãos/punhos extras.
 
@@ -34,7 +38,7 @@ O NAO não tem uma junta independente de cintura; a inclinação do corpo usa qu
 
 **Amplitude:** a opção padrão é **Origem EMAGE · 100%**, com alternativas de 80%, 60% e 35%. O percentual se refere às variações da adaptação IK para o NAO, recentradas na postura de gesticulação; limites articulares, de velocidade e aceleração podem reduzir o movimento. Não é uma cópia integral do esqueleto humano.
 
-**Velocidade:** o seletor **Ritmo dos gestos** tem Suave, Natural (padrão) e Ágil. O perfil replaneja os gestos mantendo o relógio da fala, com limites físicos aplicados depois da amplitude: Suave 0,8 rad/s e 3,5 rad/s²; Natural 1,05 e 4,5; Ágil 1,2 e 5. Os perfis Natural/Ágil também encurtam preparação e retorno quando a distância permite. Não aceleram o áudio nem comprimem toda a trajetória. A prévia simplificada mostra os braços de origem; a aba Webots mostra o plano com as opções atuais, inclusive mãos e intenção.
+**Velocidade:** o seletor **Ritmo dos gestos** tem Suave, Natural (padrão) e Ágil. O perfil replaneja os gestos mantendo o relógio da fala, com limites físicos aplicados depois da amplitude: Suave 0,8 rad/s e 3,5 rad/s²; Natural 1,05 e 4,5; Ágil 1,2 e 5. Os perfis Natural/Ágil também encurtam preparação e retorno quando a distância permite. Não aceleram o áudio nem comprimem toda a trajetória. A aba Origem EMAGE mostra os braços de origem, sem o perfil emocional; a aba Webots mostra o plano com as opções atuais, inclusive mãos e intenção.
 
 Gerações antigas recuperam os alvos IK dos arquivos EMAGE/rest já salvos, num cache separado `execution_source.json`. Não é necessário gerar a voz ou executar EMAGE novamente. Se faltarem os arquivos originais, o planejador utiliza a trajetória suavizada disponível e registra `raw_targets_available=false`, com benefício de ritmo potencialmente menor. A conversão dos gestos para Bézier agora reproduz a spline nos nós originais com derivadas exatas e verifica os limites da curva final.
 
@@ -42,7 +46,7 @@ Gerações antigas recuperam os alvos IK dos arquivos EMAGE/rest já salvos, num
 
 O resultado compara pausas por junta e diferença comando/sensor. Eventos simultâneos podem aparecer em várias juntas; a contagem não é o número de pausas do robô inteiro. Não há conclusão automática sobre a causa ou confirmação de naturalidade. O seletor **Controle dos motores** também permite testar rigidez constante numa fala, mas permanece em **Padrão do NAO** por padrão.
 
-**Validado:** geração, prévia, simulação/vídeo, conexões e execuções físicas anteriores iniciadas pelo usuário. A telemetria confirmou trechos em que os sensores pausam apesar do comando continuar, mesmo com erro RMS pequeno. A nova comparação A/B passou nos testes com serviços simulados e na interface; ainda aguarda execução física. Há 89 testes automatizados aprovados, incluindo restauração após falhas e cancelamento. Em 28/10/2026 o endpoint `192.168.17.62:9561` deixou de responder durante a validação de conexão, impedindo o ensaio A/B real.
+**Validado:** geração, prévia, simulação/vídeo, conexões e execuções físicas anteriores iniciadas pelo usuário. A telemetria confirmou trechos em que os sensores pausam apesar do comando continuar, mesmo com erro RMS pequeno. A nova comparação A/B passou nos testes com serviços simulados e na interface; ainda aguarda execução física. Há 123 testes automatizados aprovados, incluindo restauração após falhas e cancelamento. Em 28/10/2026 o endpoint `192.168.17.62:9561` deixou de responder durante a validação de conexão, impedindo o ensaio A/B real.
 
 A saída padrão da voz é o computador. **No NAO · experimental** envia PCM estéreo via ALAudioDevice; execuções anteriores completaram o envio sem erro do SDK, mas a qualidade auditiva não é medida pelo app. O volume global não é alterado.
 

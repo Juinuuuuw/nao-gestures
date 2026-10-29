@@ -93,3 +93,49 @@ Abertura e punhos agora seguem continuamente apresentação, extensão e ativida
 89 testes passaram, incluindo preservação do braço passivo, variação manual sem eventos e amplitude de 100% dentro das derivadas permitidas. QA de interface confirmou padrão 100%, envio à API, alternância de modo, mobile sem overflow e bloqueio em Crouch; POSTs de motores interceptados. Nenhum novo movimento físico foi disparado nesta atualização.
 
 Mesma fala recente (geração 578c8d8843c145da9609d0e324590614), sem abrir/fechar no texto: amplitude articular média dos oito braços antes 37.57°, agora 55.56° no perfil Ágil. Essa média de amplitudes por junta não mede naturalidade. A margem articular reduziu automaticamente o ganho efetivo para 0.854. Webots: checks_passed=True, sem queda, RMS braços 2.86°, cabeça 0.53°, mãos 2.09 pontos percentuais. Variação medida das mãos 31.5/43.4 pontos. A validação física anterior tinha erro de motores aproximadamente 1,88°; a nova versão ainda precisa ser experimentada pelo operador no robô.
+
+
+## Emoções selecionáveis — 28/10/2026
+
+Perfis autorais para Alegria, Tristeza, Medo, Raiva, Nojo e Surpresa, mais Neutra compatível com gerações antigas. A chave é validada na API, salva no job e usada na prosódia Edge TTS e no planejador v8. O texto falado permanece intacto; não há LLM de reescrita. Roteiro escrito separado com [Emoção Selecionada]/[Fala e Gestos] e referências WordBoundary. Corpo completo exige braços/cabeça e modo com mãos.
+
+99 testes passaram: seis perfis + neutro, distinção das trajetórias, preservação da duração/limites, pontuação temporal, rejeição de chaves inválidas, snapshot de LEDs, restauração após falha e caminho completo do worker em sucesso/STOP/erro de restauração sem omitir cabeça/comportamentos. Worker importou normalmente com o SDK Python 2 local.
+
+QA em Edge isolado: sete entradas de menu, seis payloads, bloqueio de executar/simular ao alterar emoção, roteiro, viewport de 390 px sem overflow e ausência de erros JS. Requisições de motores foram interceptadas.
+
+Geração real f2724f19224444a7ae19c87e411e3e58: Francisca + Surpresa (+10%, +16 Hz), 5,232 s. Pipeline Edge TTS/EMAGE/retarget concluído e Webots aprovado, sem queda: braços 2,649° RMS, cabeça 0,299° RMS, mãos 2,14 pontos percentuais de abertura. Vídeo inspecionado com olhos iluminados e gestos. Não mede percepção humana da emoção.
+
+Consulta física somente leitura confirmou ALLeds.listGroup(FaceLeds) com 48 canais e formato numérico de getIntensity em um canal. Nenhum comando novo de motor/LED foi enviado ao NAO por esta validação; a execução física emocional ainda aguarda ensaio do operador.
+
+
+## ElevenLabs e português brasileiro — 28/10/2026
+
+Integração HTTP com o endpoint oficial de áudio + tempos por caractere. Seletor Edge TTS/ElevenLabs, Voice ID inicial informado pelo operador, modelos v4/v3/Multilingual v2/Flash v2.5 e catálogo paginado da conta. O padrão v4 usa language_code=pt; o alvo da interface é pt-BR e o sotaque depende da voz. Multilingual v2 omite language_code, conforme documentação. V4/v3 recebem tags emocionais; os demais mantêm a direção corporal.
+
+Chave local protegida por Windows DPAPI ou variável ELEVENLABS_API_KEY. Não é retornada pela API de estado, gravada nos jobs, incluída nos argumentos de processos ou armazenada pelo app no navegador. Não há fallback/repetição automática de solicitações pagas. Respostas HTTP são traduzidas sem eco de corpos ou cabeçalhos; quota pode ser distinguida de chave inválida.
+
+111 testes passaram, incluindo DPAPI real no Windows, catálogo paginado, requisição de síntese única, pt/modelos, remoção de tags do alinhamento preservando tempos, rejeição de alinhamento inválido, falhas HTTP sem vazamento e conversão real do MP3 de fixture para WAV mono de 16 kHz com chamada ElevenLabs simulada. A fixture é áudio Edge existente, não uma alegação de síntese ElevenLabs real.
+
+QA isolado em Edge: seleção de serviço, bloqueio sem chave, carregamento de vozes simulado, Voice ID manual, payload de modelo/emoção, limpeza do campo de chave, nomes de voz não executam HTML/JS e mobile 390 px sem overflow. Regressão dos seis perfis emocionais aprovada. Rotas de robô e escritas de chave foram interceptadas. API local real recusou geração sem chave e Voice ID inválido antes de criar job.
+
+Não havia chave de API configurada. Nenhuma síntese real ElevenLabs nem cobrança foi feita, e nenhum comando físico foi enviado ao NAO. A confirmação com a conta depende de cadastrar chave válida no painel local; acesso ao Voice ID informado permanece não confirmado.
+
+
+### Correção de autenticação e acentos — 28/10/2026
+
+A geração 5e0445be6a814d73928ddd7f27ecfcc3 falhou com HTTP 400 genérico. Uma consulta somente leitura a /v1/models revelou detail.status=api_key_id_used_as_api_key: foi usado o ID, não o segredo sk_. Nenhuma síntese foi repetida. Foram adicionados bloqueio local de Key IDs, tradução desse erro da API, estado de credencial inválida e orientação no formulário. A chave cifrada anterior permanece para ser substituída pelo operador; não foi exposta em logs/saídas de diagnóstico. O erro exibido no histórico recebeu a causa confirmada, preservando o log original.
+
+O subprocesso usava saída CP1252 e o log era lido como UTF-8. run_command agora força PYTHONIOENCODING=utf-8 e PYTHONUTF8=1 apenas no ambiente filho. 115 testes passaram, incluindo Key ID sem rede/substituição de credencial, erro HTTP correspondente e regressão de mensagem portuguesa sob ambiente pai CP1252. A confirmação da voz/modelo continua pendente de chave secreta válida.
+
+
+## Expressão corporal v9 e retenção dos olhos — 28/10/2026
+
+Os registros anteriores confirmavam a cor de Raiva e a emoção selecionada, mas a escrita única permitia interferência do controle autônomo. Pausar apenas a piscada ou renovar ALLeds sem reservar os recursos não bastou no teste físico. A correção reserva apenas Left eye leds/Right eye leds com um proprietário temporário e libera ambos em encerramento/STOP/erro. AutonomousBlinking é salvo, suspenso e restaurado. A cor é renovada a 2 Hz, com fade curto, sem alterar LEDs de peito/orelhas ou reflexos.
+
+Teste físico exclusivamente de LEDs: três amostras de 48 canais durante aproximadamente 3 s, erro máximo do alvo inferior a 0,000001, recursos liberados e piscada restaurada. Não foram enviadas trajetórias aos motores. O instantâneo anterior é reenviado, mas sua reprodução RGB exata não foi confirmada no ensaio; o controle autônomo retoma suas animações após a liberação.
+
+Perfis v9 sustentam posturas distintas ao longo da fala, com acentos ancorados em palavras reais e preservação do EMAGE. Sobre um mesmo áudio de 23,4 s, diferenças RMS dos braços frente ao neutro: Alegria 4,81°, Tristeza 7,74°, Medo 8,11°, Raiva 4,80°, Nojo 4,93°, Surpresa 6,22°. Esses valores demonstram diferença planejada, não reconhecimento humano de emoção.
+
+123 testes aprovados, incluindo manutenção e falha de cor, retorno da piscada inicialmente desabilitada, reserva/liberação dos dois recursos e restauração no fluxo completo do executor. QA da interface passou nas seis opções e em mobile; requisições de motores interceptadas. A aba de origem foi renomeada para Origem EMAGE para distingui-la do plano emocional no Webots.
+
+Simulação da geração e74dee1d1feb4fad8c295dc96086835d, Raiva com braços/cabeça/mãos: checks_passed=true, sem queda, RMS braços 2,346°, cabeça 0,281°, mãos 2,335 pontos percentuais. Áudio existente reutilizado, sem nova chamada paga à ElevenLabs. A nova trajetória corporal ainda precisa de ensaio pelo operador no NAO físico.

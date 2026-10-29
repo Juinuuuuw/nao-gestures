@@ -16,6 +16,8 @@ import uuid
 import numpy as np
 from app.sdk_bridge import launch_bridge
 from app.robot_plan import build_plan,build_diagnostic_plan,PACES
+from app.emotion import profile,expression_script
+from app.voice_providers import api_key,save_key,provider_status,voice_catalog,validate_voice,validate_api_key
 from nao_gestures.__main__ import export
 
 ROOT=Path(__file__).resolve().parents[1]
@@ -55,6 +57,8 @@ def claim(operation,message):
         STATE.update(busy=True,operation=operation,message=message,execution=None,quality=None)
         STOP.clear()
 def run_command(command,log,env=None):
+    env=(env if env is not None else os.environ).copy()
+    env.update(PYTHONIOENCODING='utf-8',PYTHONUTF8='1')
     with log.open('a',encoding='utf-8') as output:
         process=subprocess.Popen(list(map(str,command)),cwd=str(ROOT),stdout=output,stderr=subprocess.STDOUT,env=env)
         ACTIVE['process']=process
@@ -65,8 +69,17 @@ def run_command(command,log,env=None):
 def generate(job):
     directory=JOBS/job['id'];log=directory/'pipeline.log'
     try:
-        update(message='Gerando a voz com Edge TTS…')
-        run_command([sys.executable,ROOT/'scripts/synthesize_edge.py','--text-file',directory/'text.txt','--out',directory,'--voice',job['voice']],log)
+        provider=job.get('provider','edge-tts')
+        update(message='Gerando a voz com '+('ElevenLabs' if provider=='elevenlabs' else 'Edge TTS')+'…')
+        expression=profile(job.get('emotion','neutral'))
+        if provider=='elevenlabs':
+            run_command([sys.executable,ROOT/'scripts/synthesize_elevenlabs.py','--text-file',directory/'text.txt','--out',directory,'--voice',job['voice'],
+                         '--model',job['model'],'--emotion',job.get('emotion','neutral')],log)
+        else:
+            run_command([sys.executable,ROOT/'scripts/synthesize_edge.py','--text-file',directory/'text.txt','--out',directory,'--voice',job['voice'],
+                         '--rate='+expression['rate'],'--pitch='+expression['pitch'],'--volume='+expression['volume']],log)
+        script=expression_script(read_json(directory/'speech.json'),job.get('emotion','neutral'))
+        (directory/'expression.json').write_text(json.dumps(script,ensure_ascii=False,indent=2),encoding='utf-8')
         if read_json(directory/'speech.json')['duration_s']>60:raise ValueError('A fala ultrapassou 60 segundos. Reduza o texto e gere novamente.')
         update(message='Criando os movimentos com EMAGE…')
         run_command([sys.executable,ROOT/'scripts/infer_emage.py','--repo',WORK/'character-policy','--weights',WORK/'weights/emage','--audio',directory/'speech.wav','--rest-model',WORK/'weights/evaltools/smplx_models/smplx/SMPLX_NEUTRAL_2020.npz','--out',directory],log)
@@ -115,9 +128,11 @@ def simulate(identifier,body_mode='arms',pace='natural',intensity=1.,intent_enab
         trajectory=load_execution_trajectory(directory)
         upper=load_upper_body(directory) if body_mode!='arms' else None
         direction=plan_intents(read_json(directory/'speech.json'),trajectory['times_s'][-1]) if intent_enabled else None
+        emotion=get_job(identifier).get('emotion','neutral')
+        emotion_cues=expression_script(read_json(directory/'speech.json'),emotion)['cues']
         plan=build_plan(trajectory,REST,intensity,pace=pace,
                         head_targets=upper['head_rad'] if upper is not None else None,current_head=[0.,0.] if upper is not None else None,
-                        direction=direction,current_manual=[0.,0.,.42,.42] if intent_enabled else None)
+                        direction=direction,current_manual=[0.,0.,.42,.42] if intent_enabled else None,emotion=emotion,emotion_cues=emotion_cues)
         plan['initial_angles']=REST.tolist()+([0.,0.] if upper is not None else [])+([0.,0.,.42,.42] if intent_enabled else [])
         torso=torso_coefficients(upper['torso_pitch_rad'],upper['fps']) if body_mode=='torso' else None
         preview=speech_preview(plan,torso,upper['fps'] if upper is not None else 30.)
@@ -175,7 +190,9 @@ def execute_robot(identifier,audio_on_robot,intensity=1.,diagnostic=False,consta
             current_head=status['head']['angles'] if head_enabled else None
             if intent_enabled and not status.get('manual',{}).get('available'):raise ValueError('Leitura de punhos/mãos indisponível. Desative gestos com intenção para executar somente o EMAGE.')
             current_manual=status['manual']['angles'] if intent_enabled else None
-            plan=build_diagnostic_plan(status['angles']) if diagnostic else build_plan(trajectory,status['angles'],intensity,pace=pace,head_targets=head_targets,current_head=current_head,direction=direction,current_manual=current_manual)
+            emotion='neutral' if diagnostic else get_job(identifier).get('emotion','neutral')
+            emotion_cues=[] if diagnostic else expression_script(read_json(directory/'speech.json'),emotion)['cues']
+            plan=build_diagnostic_plan(status['angles']) if diagnostic else build_plan(trajectory,status['angles'],intensity,pace=pace,head_targets=head_targets,current_head=current_head,direction=direction,current_manual=current_manual,emotion=emotion,emotion_cues=emotion_cues)
             plan['initial_angles']=status['angles']+(current_head if current_head is not None else [])+(current_manual if current_manual is not None else []);plan['constant_stiffness']=constant
             plan_path=run_dir/'plan.json';plan_path.write_text(json.dumps(plan),encoding='utf-8')
             audio=directory/'speech.wav'
@@ -202,9 +219,15 @@ def execute_robot(identifier,audio_on_robot,intensity=1.,diagnostic=False,consta
                         execution.update(phase='moving');update(execution=execution.copy(),message=label+': movimento em execução.')
                     elif event.get('event')=='audio_start':
                         execution.update(audio_started=True);update(execution=execution.copy())
+                    elif event.get('event')=='eye_expression':
+                        execution['eye_expression_active']=event.get('active',False)
+                        if not event.get('active'):execution['eye_expression_warning']='LEDs dos olhos indisponíveis: '+event.get('message','')
+                        update(execution=execution.copy())
+                    elif event.get('event')=='eye_control':
+                        execution['autonomous_blinking_suspended']=event.get('autonomous_blinking_suspended',False);update(execution=execution.copy())
                     elif event.get('event')=='error':error=event.get('message')
                     elif event.get('event') in ('complete','stopped'):
-                        execution['phase']=event['event'];execution['tracking_rms_deg']=event.get('motor_tracking_rms_deg');update(execution=execution.copy())
+                        execution['phase']=event['event'];execution['tracking_rms_deg']=event.get('motor_tracking_rms_deg');execution['eye_refresh_count']=event.get('eye_refresh_count',0);update(execution=execution.copy())
             process.wait()
             if process.returncode or error:raise RuntimeError(error or 'A conexão com o executor foi encerrada.')
             if STOP.is_set() or execution['phase']=='stopped':break
@@ -256,6 +279,11 @@ class Handler(BaseHTTPRequestHandler):
             path=urlsplit(self.path).path
             if path=='/':return self.file(ASSETS/'index.html',True)
             if path in ('/ui.css','/ui.js'):return self.file(ASSETS/path[1:])
+            if path=='/api/voice/status':return self.json(provider_status())
+            expression_match=re.fullmatch('/api/expression/(demo|[a-f0-9]{32})',path)
+            if expression_match:
+                identifier=expression_match.group(1)
+                return self.json(expression_script(read_json(job_dir(identifier)/'speech.json'),get_job(identifier).get('emotion','neutral')))
             direction_match=re.fullmatch('/api/direction/(demo|[a-f0-9]{32})',path)
             if direction_match:
                 from app.direction import plan_intents
@@ -288,13 +316,25 @@ class Handler(BaseHTTPRequestHandler):
             data=json.loads(self.rfile.read(length) or b'{}')
             if not isinstance(data,dict):raise ValueError('Formato de requisição inválido.')
             path=urlsplit(self.path).path
+            if path=='/api/voice/elevenlabs/key':
+                if STATE['busy']:raise ValueError('Aguarde a geração/execução atual antes de trocar a chave.')
+                save_key(data.get('api_key'));return self.json(provider_status())
+            if path=='/api/voice/elevenlabs/voices':return self.json(voice_catalog())
             if path=='/api/generate':
                 if not isinstance(data.get('text'),str):raise ValueError('Informe o texto da fala.')
                 text=data.get('text','').strip();voice=data.get('voice')
                 if not 1<=len(text)<=1200:raise ValueError('Escreva entre 1 e 1.200 caracteres.')
-                if voice not in ('pt-BR-AntonioNeural','pt-BR-FranciscaNeural'):raise ValueError('Voz não disponível.')
+                provider=data.get('provider','edge-tts');model=None
+                if provider=='elevenlabs':
+                    model=data.get('model','eleven_v4');validate_voice(voice,model)
+                    if not api_key():raise ValueError('Cadastre a API key da ElevenLabs no painel de voz.')
+                    validate_api_key(api_key())
+                elif provider=='edge-tts':
+                    if voice not in ('pt-BR-AntonioNeural','pt-BR-FranciscaNeural'):raise ValueError('Voz não disponível.')
+                else:raise ValueError('Provedor de voz inválido.')
+                emotion=data.get('emotion','neutral');profile(emotion)
                 claim('generate','Preparando a geração…')
-                job={'id':uuid.uuid4().hex,'text':text,'voice':voice,'created':time.time(),'status':'generating'}
+                job={'id':uuid.uuid4().hex,'text':text,'voice':voice,'provider':provider,'model':model,'locale':'pt-BR','emotion':emotion,'created':time.time(),'status':'generating'}
                 directory=JOBS/job['id'];directory.mkdir();(directory/'text.txt').write_text(text,encoding='utf-8');save_job(job)
                 threading.Thread(target=generate,args=(job,),daemon=True).start();return self.json({'id':job['id']},202)
             if path=='/api/robot/probe':
